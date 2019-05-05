@@ -185,16 +185,21 @@ class DoconfConfig(metaclass=MetaConfig):
     def load(cls, path=None):
         if path and not os.path.isfile(path):
             raise DoconfFileError('No config file at {!r}'.format(path))
-        path = path or cls.discover_path()
         if not path:
-            raise DoconfFileError('no config path discovered for {!r}'.format(
-                cls._NAME,
-            ))
+            discoverable = cls.possible_paths()
+            for path in discoverable:
+                if os.path.isfile(path):
+                    break
+            else:
+                raise DoconfFileError(
+                    'no config path discovered for {!r}, checked:\n - {}'
+                    .format(cls._NAME, '\n - '.join(discoverable))
+                )
         parser = ConfigParser()
         parser.read(path)
 
     @classmethod
-    def discover_path(cls):
+    def possible_paths(cls):
         '''
         Discover possible configuration paths.
         Need to check if $XDG_CONFIG_HOME exists (default ~/.config/), or if
@@ -227,10 +232,4 @@ class DoconfConfig(metaclass=MetaConfig):
             for f in filenames:
                 path = os.path.join(d, f)
                 discoverable.append(path)
-        print('Checking:')
-        from pprint import pprint
-        pprint(discoverable)
-        for path in discoverable:
-            if os.path.isfile(path):
-                return path
-        return None
+        return discoverable
