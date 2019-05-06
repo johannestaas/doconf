@@ -12,7 +12,10 @@ def read(fname):
 setup(
     name="doconf",
     version="0.0.1",
-    description="Configuration specified through documentation, supporting multiple formats.",
+    description=(
+        "Configuration specified through documentation, supporting multiple "
+        "formats."
+    ),
     author="Johan Nestaas",
     author_email="johannestaas@gmail.com",
     license="GPLv3",
