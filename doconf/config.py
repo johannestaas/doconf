@@ -197,8 +197,9 @@ class DoconfConfig(metaclass=MetaConfig):
                     'no config path discovered for {!r}, checked:\n - {}'
                     .format(cls._NAME, '\n - '.join(discoverable))
                 )
-        parser = ConfigParser()
-        parser.read(path)
+        config = ConfigParser()
+        config.read(path)
+        return cls(config=config)
 
     @classmethod
     def possible_paths(cls):
@@ -235,3 +236,6 @@ class DoconfConfig(metaclass=MetaConfig):
                 path = os.path.join(d, f)
                 discoverable.append(path)
         return discoverable
+
+    def __init__(self, config=None):
+        self._config = config
