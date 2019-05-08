@@ -281,5 +281,4 @@ class DoconfConfig(metaclass=MetaConfig):
         self.validate()
 
     def validate(self):
-        return True
         raise DoconfBadConfigError()
