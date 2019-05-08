@@ -68,8 +68,8 @@ class _State:
         ]
         self.line_num = 0
         self.sect = None
-        self.env = _Env('default')
-        self.envs = {'default': self.env}
+        self.env = None
+        self.envs = {}
         self.dct = {}
 
     @property
@@ -88,7 +88,10 @@ class _State:
         m = RE_NAME.match(self.line)
         if m and self.sect is None:
             if '_NAME' in self.dct:
-                raise DoconfClassError('duplicate `name: <name>` specified')
+                raise DoconfClassError(
+                    'duplicate name {!r} found before line:\n{!r}'
+                    .format(self.dct['_NAME'], self.line)
+                )
             else:
                 self.dct['_NAME'] = m.group('name')
             return True
@@ -98,11 +101,15 @@ class _State:
         m = RE_ENV.match(self.line)
         if m:
             if '_NAME' not in self.dct:
-                raise DoconfClassError('specify `name: <name>` before env')
+                raise DoconfClassError(
+                    'Please specify "name: my_app", before line:\n{!r}'
+                    .format(self.line)
+                )
             env_name = m.group('env').upper()
             if env_name in self.envs:
                 raise DoconfClassError(
-                    '{!r} environment already specified'.format(env_name)
+                    'duplicate environment {!r} found, before line:\n{!r}'
+                    .format(env_name, self.line)
                 )
             self.env = _Env(env_name)
             self.envs[env_name] = self.env
@@ -114,7 +121,13 @@ class _State:
         if m:
             if '_NAME' not in self.dct:
                 raise DoconfClassError(
-                    'specify `name: <name>` before sections'
+                    'Please specify "name: my_app", then {{DEFAULT}} '
+                    'before line:\n{!r}'.format(self.line)
+                )
+            elif 'DEFAULT' not in self.envs:
+                raise DoconfClassError(
+                    'Please specify {{DEFAULT}} environment before line:\n{!r}'
+                    .format(self.line)
                 )
             name = m.group('section').lower()
             if name in self.env.section_names:
@@ -131,7 +144,21 @@ class _State:
         m = RE_VAR.match(self.line)
         if m:
             if '_NAME' not in self.dct:
-                raise DoconfClassError('specify `name: <name>` first')
+                raise DoconfClassError(
+                    'Please specify "name: my_app", then {{DEFAULT}} then '
+                    'a section like [section] before line:\n{!r}'
+                    .format(self.line)
+                )
+            elif 'DEFAULT' not in self.envs:
+                raise DoconfClassError(
+                    'Please specify {{DEFAULT}} environment and then [section] '
+                    'before line:\n{!r}'.format(self.line)
+                )
+            elif self.sect is None:
+                raise DoconfClassError(
+                    'Please specify a section before line:\n{!r}'
+                    .format(self.line)
+                )
             name = m.group('id').strip().upper()
             if name in self.sect.variable_names:
                 raise DoconfClassError('{!r} already specified in {!r}'.format(
@@ -290,4 +317,5 @@ class DoconfConfig(metaclass=MetaConfig):
         self.validate()
 
     def validate(self):
+
         raise DoconfBadConfigError()
