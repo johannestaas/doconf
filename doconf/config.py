@@ -6,6 +6,7 @@ Core doconf logic lies here.
 '''
 import os
 import re
+import ast
 from configparser import ConfigParser
 
 from .exceptions import (
@@ -154,28 +155,30 @@ class _State:
 
 
 def parse_as(val, typ):
-    if typ in (str, int, float):
-        return typ(val)
-    if typ is bool:
-        if isinstance(val, str):
-            truthy = val.strip().lower() in ('true', 'on', 'yes', '1')
-            falsey = val.strip().lower() in ('false', 'off', 'no', '0', 'null')
-            if truthy:
-                return True
-            if falsey:
-                return False
+    val = val.strip()
+
+    if val.lower() in ('null', 'none'):
+        return None
+
+    if val.lower() in ('true', 'false') and typ is bool:
+        return ast.literal_eval(val.title())
+
+    try:
+        val = ast.literal_eval(val)
+    except ValueError:
+        if typ is not str:
             raise DoconfTypeError(
-                '{!r} not one of: (true, on, yes, 1, false, off, no, 0, null)'
-                .format(val)
+                'value {!r} unable to be coerced to {!r}'.format(val, typ)
             )
-        elif val in (True, False):
-            return val
-        elif val is None:
-            return False
-        elif isinstance(val, (int, float)):
-            return val != 0
-        else:
-            raise DoconfTypeError('unknown type of {!r}'.format(val))
+
+    if typ in (str, int, float, bool):
+        try:
+            return typ(val)
+        except ValueError:
+            raise DoconfTypeError(
+                'value {!r} unable to be coerced to {!r}'.format(val, typ)
+            )
+
     raise DoconfTypeError(
         'can only parse type str, int, float, bool, not {!r}'.format(typ)
     )
