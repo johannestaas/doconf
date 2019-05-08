@@ -184,21 +184,24 @@ class MetaConfig(type):
 class DoconfConfig(metaclass=MetaConfig):
 
     @classmethod
-    def load(cls, path=None):
-        if path and not os.path.isfile(path):
-            raise DoconfFileError('No config file at {!r}'.format(path))
-        if not path:
-            discoverable = cls.possible_paths()
-            for path in discoverable:
-                if os.path.isfile(path):
-                    break
-            else:
-                raise DoconfFileError(
-                    'no config path discovered for {!r}, checked:\n - {}'
-                    .format(cls._NAME, '\n - '.join(discoverable))
-                )
+    def load(cls, path=None, text=None):
         config = ConfigParser()
-        config.read(path)
+        if text:
+            config.read_string(text)
+        else:
+            if path and not os.path.isfile(path):
+                raise DoconfFileError('No config file at {!r}'.format(path))
+            if not path:
+                discoverable = cls.possible_paths()
+                for path in discoverable:
+                    if os.path.isfile(path):
+                        break
+                else:
+                    raise DoconfFileError(
+                        'no config path discovered for {!r}, checked:\n - {}'
+                        .format(cls._NAME, '\n - '.join(discoverable))
+                    )
+            config.read(path)
         return cls(config=config)
 
     @classmethod
