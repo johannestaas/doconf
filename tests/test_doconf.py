@@ -11,6 +11,8 @@ class BasicConfig(DoconfConfig):
     '''
     name: doconf_unittest
 
+    {DEFAULT}
+
     [section1]
     DEBUG (bool): debug mode on or off
     AGE (int): person's age
@@ -29,8 +31,14 @@ class BasicConfig(DoconfConfig):
 
 
 def test_load_basic_config():
-    conf = BasicConfig.load(text='''
+    BasicConfig.load(text='''
     [section1]
+    DEBUG=true
+    AGE=30
+    SUCCESS=1
+    NAME=joey
+    # Should raise issue with IDEA missing...
+    # IDEA=test
     [section2]
     DEBUG2=true
     ''')

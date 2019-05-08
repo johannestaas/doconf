@@ -230,10 +230,8 @@ def parse_docs(lines, dct):
         if state.handle_var():
             continue
 
-    if not state.envs['default'].sections:
-        del state.envs['default']
-    if not state.envs:
-        raise DoconfClassError('No configurations documented in class')
+    if not state.envs.get('DEFAULT'):
+        raise DoconfClassError('No DEFAULT configurations documented in class')
 
     dct['_ENVS'] = state.envs
 
@@ -314,8 +312,34 @@ class DoconfConfig(metaclass=MetaConfig):
 
     def __init__(self, config=None):
         self._config = config
-        self.validate()
+        self._default = self.__class__._ENVS['DEFAULT']
+        self._values = {}
+        self.parse()
 
-    def validate(self):
-
-        raise DoconfBadConfigError()
+    def parse(self):
+        for d_sect in self._default.sections:
+            sect_values = {}
+            self._values[d_sect.name] = sect_values
+            try:
+                sect = self._config[d_sect.name]
+            except KeyError:
+                # Should check if any required variables are in this section.
+                continue
+            for var in d_sect.variables:
+                try:
+                    val = sect[var.name]
+                except KeyError:
+                    # Check if it's required.
+                    if not var.has_default:
+                        raise DoconfBadConfigError(
+                            'cant find config variable {!r} in section {!r}'
+                            .format(var.name, d_sect.name)
+                        )
+                    else:
+                        sect_values[var.name] = var.default
+                    continue
+                try:
+                    val = parse_as(val, var.typ)
+                except DoconfTypeError:
+                    raise
+                sect_values[var.name] = val
