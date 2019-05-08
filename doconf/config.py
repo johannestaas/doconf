@@ -163,15 +163,21 @@ def parse_as(val, typ):
     if val.lower() in ('true', 'false') and typ is bool:
         return ast.literal_eval(val.title())
 
-    try:
-        val = ast.literal_eval(val)
-    except ValueError:
-        if typ is not str:
+    if typ is str:
+        if (
+            (val.startswith('"') and val.endswith('"')) or
+            (val.startswith("'") and val.endswith("'"))
+        ):
+            return ast.literal_eval(val)
+        else:
+            return str(val)
+    elif typ in (int, float, bool):
+        try:
+            val = ast.literal_eval(val)
+        except ValueError:
             raise DoconfTypeError(
-                'value {!r} unable to be coerced to {!r}'.format(val, typ)
+                'value {!r} unable to be eval\'ed as {!r}'.format(val, typ)
             )
-
-    if typ in (str, int, float, bool):
         try:
             return typ(val)
         except ValueError:
