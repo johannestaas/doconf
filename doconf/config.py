@@ -115,13 +115,15 @@ def parse_docs(lines, dct):
                     '{!r} environment already specified'.format(env_name)
                 )
             env = _Env(env_name)
-            envs[env_name] = _Env
+            envs[env_name] = env
             continue
 
         m = RE_SECT.match(line)
         if m:
             if '_NAME' not in dct:
-                raise DoconfClassError('specify `name: <name>` before sections')
+                raise DoconfClassError(
+                    'specify `name: <name>` before sections'
+                )
             name = m.group('section').lower()
             if name in env.section_names:
                 raise DoconfClassError(
