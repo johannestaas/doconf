@@ -6,6 +6,7 @@ Configuration specified through documentation, supporting multiple formats.
 from .config import DoconfConfig
 from .exceptions import (
     DoconfError, DoconfClassError, DoconfFileError, DoconfTypeError,
+    DoconfBadConfigError,
 )
 
 __title__ = 'doconf'
@@ -16,6 +17,7 @@ __all__ = (
     'DoconfClassError',
     'DoconfFileError',
     'DoconfTypeError',
+    'DoconfBadConfigError',
 )
 __author__ = 'Johan Nestaas <johannestaas@gmail.com>'
 __license__ = 'GPLv3'

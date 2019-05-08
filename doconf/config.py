@@ -8,7 +8,9 @@ import os
 import re
 from configparser import ConfigParser
 
-from .exceptions import DoconfClassError, DoconfFileError, DoconfTypeError
+from .exceptions import (
+    DoconfClassError, DoconfFileError, DoconfTypeError, DoconfBadConfigError,
+)
 
 
 RE_NAME = re.compile(r'^\s*[nN][aA][mM][eE]\s*:\s*(?P<name>\S+)\s*$')
@@ -56,6 +58,101 @@ class _Var:
         self.desc = desc
 
 
+class _State:
+    def __init__(self, lines):
+        self.lines = [
+            x.strip()
+            for x in lines
+            if not x.startswith('#') and x.strip()
+        ]
+        self.line_num = 0
+        self.sect = None
+        self.env = _Env('default')
+        self.envs = {'default': self.env}
+        self.dct = {}
+
+    @property
+    def line(self):
+        if self.line_num >= len(self.lines):
+            return None
+        return self.lines[self.line_num]
+
+    def gen_lines(self):
+        while self.line is not None:
+            yield self.line
+            self.line_num += 1
+        self.line_num = 0
+
+    def handle_name(self):
+        m = RE_NAME.match(self.line)
+        if m and self.sect is None:
+            if '_NAME' in self.dct:
+                raise DoconfClassError('duplicate `name: <name>` specified')
+            else:
+                self.dct['_NAME'] = m.group('name')
+            return True
+        return False
+
+    def handle_env(self):
+        m = RE_ENV.match(self.line)
+        if m:
+            if '_NAME' not in self.dct:
+                raise DoconfClassError('specify `name: <name>` before env')
+            env_name = m.group('env').upper()
+            if env_name in self.envs:
+                raise DoconfClassError(
+                    '{!r} environment already specified'.format(env_name)
+                )
+            self.env = _Env(env_name)
+            self.envs[env_name] = self.env
+            return True
+        return False
+
+    def handle_sect(self):
+        m = RE_SECT.match(self.line)
+        if m:
+            if '_NAME' not in self.dct:
+                raise DoconfClassError(
+                    'specify `name: <name>` before sections'
+                )
+            name = m.group('section').lower()
+            if name in self.env.section_names:
+                raise DoconfClassError(
+                    '{!r} is already defined as a section'.format(name)
+                )
+            self.env.section_names.add(name)
+            self.sect = _Section(name)
+            self.env.sections.append(self.sect)
+            return True
+        return False
+
+    def handle_var(self):
+        m = RE_VAR.match(self.line)
+        if m:
+            if '_NAME' not in self.dct:
+                raise DoconfClassError('specify `name: <name>` first')
+            name = m.group('id').strip().upper()
+            if name in self.sect.variable_names:
+                raise DoconfClassError('{!r} already specified in {!r}'.format(
+                    name, self.sect.name,
+                ))
+            self.sect.variable_names.add(name)
+            typestr = m.group('typestr')
+            default = None
+            has_default = False
+            if ':' in typestr:
+                typestr, default = typestr.split(':', 1)
+                has_default = True
+            desc = m.group('desc')
+            var = _Var(
+                name, default=default, has_default=has_default,
+                typestr=typestr, desc=desc,
+            )
+            self.sect.variables.append(var)
+            return True
+        return False
+
+
 def parse_as(val, typ):
     if typ in (str, int, float):
         return typ(val)
@@ -85,85 +182,24 @@ def parse_as(val, typ):
 
 
 def parse_docs(lines, dct):
-    lines = [
-        x.strip()
-        for x in lines
-        if not x.startswith('#') and x.strip()
-    ]
+    state = _State(lines)
 
-    sect = None
-    env = _Env('default')
-    envs = {'default': env}
-
-    for line in lines:
-
-        m = RE_NAME.match(line)
-        if m and sect is None:
-            if '_NAME' in dct:
-                raise DoconfClassError('duplicate `name: <name>` specified')
-            else:
-                dct['_NAME'] = m.group('name')
+    for line in state.gen_lines():
+        if state.handle_name():
+            continue
+        if state.handle_env():
+            continue
+        if state.handle_sect():
+            continue
+        if state.handle_var():
             continue
 
-        m = RE_ENV.match(line)
-        if m:
-            if '_NAME' not in dct:
-                raise DoconfClassError('specify `name: <name>` before env')
-            env_name = m.group('env').upper()
-            if env_name in envs:
-                raise DoconfClassError(
-                    '{!r} environment already specified'.format(env_name)
-                )
-            env = _Env(env_name)
-            envs[env_name] = env
-            continue
-
-        m = RE_SECT.match(line)
-        if m:
-            if '_NAME' not in dct:
-                raise DoconfClassError(
-                    'specify `name: <name>` before sections'
-                )
-            name = m.group('section').lower()
-            if name in env.section_names:
-                raise DoconfClassError(
-                    '{!r} is already defined as a section'.format(name)
-                )
-            env.section_names.add(name)
-            sect = _Section(name)
-            env.sections.append(sect)
-            continue
-
-        m = RE_VAR.match(line)
-        if m:
-            if '_NAME' not in dct:
-                raise DoconfClassError('specify `name: <name>` first')
-            name = m.group('id').strip().upper()
-            if name in sect.variable_names:
-                raise DoconfClassError('{!r} already specified in {!r}'.format(
-                    name, sect.name,
-                ))
-            sect.variable_names.add(name)
-            typestr = m.group('typestr')
-            default = None
-            has_default = False
-            if ':' in typestr:
-                typestr, default = typestr.split(':', 1)
-                has_default = True
-            desc = m.group('desc')
-            var = _Var(
-                name, default=default, has_default=has_default,
-                typestr=typestr, desc=desc,
-            )
-            sect.variables.append(var)
-            continue
-
-    if not envs['default'].sections:
-        del envs['default']
-    if not envs:
+    if not state.envs['default'].sections:
+        del state.envs['default']
+    if not state.envs:
         raise DoconfClassError('No configurations documented in class')
 
-    dct['_ENVS'] = envs
+    dct['_ENVS'] = state.envs
 
 
 class MetaConfig(type):
@@ -242,3 +278,8 @@ class DoconfConfig(metaclass=MetaConfig):
 
     def __init__(self, config=None):
         self._config = config
+        self.validate()
+
+    def validate(self):
+        return True
+        raise DoconfBadConfigError()
