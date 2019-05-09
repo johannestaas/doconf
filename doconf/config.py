@@ -18,7 +18,7 @@ RE_NAME = re.compile(r'^\s*[nN][aA][mM][eE]\s*:\s*(?P<name>\S+)\s*$')
 RE_ENV = re.compile(r'^\s*\{(?P<env>[^\}]+)\}\s*$')
 RE_SECT = re.compile(r'^\s*\[(?P<section>[^\]]+)\]\s*$')
 RE_VAR = re.compile(
-    r'^\s*(?P<id>\w+)\s+(\((?P<typestr>[^\)]+)\))?\s*:\s*(?P<desc>.*)$'
+    r'^\s*(?P<id>\w+)\s*(\((?P<typestr>[^\)]+)\))?\s*:\s*(?P<desc>.*)$'
 )
 
 
@@ -177,7 +177,9 @@ class _State:
             typestr = m.group('typestr')
             default = None
             has_default = False
-            if ':' in typestr:
+            if typestr is None:
+                typestr = 'str'
+            elif ':' in typestr:
                 typestr, default = typestr.split(':', 1)
                 has_default = True
             desc = m.group('desc')

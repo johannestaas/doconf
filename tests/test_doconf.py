@@ -51,4 +51,29 @@ def test_load_basic_config():
     assert isinstance(conf['section1']['success'], float)
     assert conf['section1']['name'] == 'joey'
     assert conf['section1']['idea'] == 'fizz buzz bar'
+    assert conf['second_section']['debug2'] is True
     assert conf['second_section']['idea2'] == 'fazz bazz'
+
+
+def test_case_insensitivity():
+    conf = BasicConfig.load(text='''
+    [section1]
+    DEBUG=true
+    AGE=30
+    SUCCESS=1
+    NAME=joey
+    # Should raise issue with IDEA missing...
+    # IDEA=test
+    [second_section]
+    DEBUG2=true
+    IDEA2=fazz bazz
+    ''')
+    from pprint import pprint
+    pprint(conf._values)
+    assert conf['SECTION1']['name'] == 'joey'
+    assert conf['section1']['NAME'] == 'joey'
+    assert conf['SECTION1']['NAME'] == 'joey'
+    assert conf['section1']['name'] == 'joey'
+    assert conf['Section1']['Name'] == 'joey'
+    assert conf['SectioN1']['NamE'] == 'joey'
+    assert conf['section1']['NaMe'] == 'joey'
