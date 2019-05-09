@@ -24,29 +24,35 @@ RE_VAR = re.compile(
 
 class _Env:
     def __init__(self, name):
-        self.name = name
+        self.name = name.strip().lower()
         self.sections = []
         self.section_names = set()
 
 
 class _Section:
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, name, env=None):
+        self.name = name.strip().lower()
         self.variables = []
         self.variable_names = set()
+        self.env = env
+        self.has_required = False
+        self.defaults = {}
 
 
 class _Var:
     def __init__(
         self, name, default=None, has_default=False, typestr=None, desc=None,
+        section=None,
     ):
-        self.name = name
+        self.name = name.strip().upper()
         self.default = default
         self.has_default = has_default
-        self.typestr = typestr.strip().lower()
+        if typestr:
+            self.typestr = typestr.strip().lower()
+        self.section = section
         if typestr == 'int':
             self.typ = int
-        elif typestr in ('str', 'string'):
+        elif typestr in ('str', 'string', None):
             self.typ = str
         elif typestr in ('bool', 'boolean'):
             self.typ = bool
@@ -56,6 +62,9 @@ class _Var:
             raise DoconfClassError('unknown type {!r}'.format(typestr))
         if self.has_default:
             self.default = parse_as(self.default, self.typ)
+            self.section.defaults[self.name] = self.default
+        else:
+            self.section.has_required = True
         self.desc = desc
 
 
@@ -93,7 +102,7 @@ class _State:
                     .format(self.dct['_NAME'], self.line)
                 )
             else:
-                self.dct['_NAME'] = m.group('name')
+                self.dct['_NAME'] = m.group('name').lower().strip()
             return True
         return False
 
@@ -105,7 +114,7 @@ class _State:
                     'Please specify "name: my_app", before line:\n{!r}'
                     .format(self.line)
                 )
-            env_name = m.group('env').upper()
+            env_name = m.group('env').lower().strip()
             if env_name in self.envs:
                 raise DoconfClassError(
                     'duplicate environment {!r} found, before line:\n{!r}'
@@ -124,18 +133,18 @@ class _State:
                     'Please specify "name: my_app", then {{DEFAULT}} '
                     'before line:\n{!r}'.format(self.line)
                 )
-            elif 'DEFAULT' not in self.envs:
+            elif 'default' not in self.envs:
                 raise DoconfClassError(
                     'Please specify {{DEFAULT}} environment before line:\n{!r}'
                     .format(self.line)
                 )
-            name = m.group('section').lower()
+            name = m.group('section').lower().strip()
             if name in self.env.section_names:
                 raise DoconfClassError(
                     '{!r} is already defined as a section'.format(name)
                 )
             self.env.section_names.add(name)
-            self.sect = _Section(name)
+            self.sect = _Section(name, env=self.env)
             self.env.sections.append(self.sect)
             return True
         return False
@@ -149,7 +158,7 @@ class _State:
                     'a section like [section] before line:\n{!r}'
                     .format(self.line)
                 )
-            elif 'DEFAULT' not in self.envs:
+            elif 'default' not in self.envs:
                 raise DoconfClassError(
                     'Please specify {{DEFAULT}} environment and then [section] '
                     'before line:\n{!r}'.format(self.line)
@@ -159,7 +168,7 @@ class _State:
                     'Please specify a section before line:\n{!r}'
                     .format(self.line)
                 )
-            name = m.group('id').strip().upper()
+            name = m.group('id').upper().strip()
             if name in self.sect.variable_names:
                 raise DoconfClassError('{!r} already specified in {!r}'.format(
                     name, self.sect.name,
@@ -174,7 +183,7 @@ class _State:
             desc = m.group('desc')
             var = _Var(
                 name, default=default, has_default=has_default,
-                typestr=typestr, desc=desc,
+                typestr=typestr, desc=desc, section=self.sect,
             )
             self.sect.variables.append(var)
             return True
@@ -230,7 +239,7 @@ def parse_docs(lines, dct):
         if state.handle_var():
             continue
 
-    if not state.envs.get('DEFAULT'):
+    if not state.envs.get('default'):
         raise DoconfClassError('No DEFAULT configurations documented in class')
 
     dct['_ENVS'] = state.envs
@@ -249,6 +258,15 @@ class MetaConfig(type):
             )
         parse_docs(docs.splitlines(), dct)
         return super(MetaConfig, cls).__new__(cls, name, bases, dct)
+
+
+class DoconfSection(dict):
+
+    def __getitem__(self, item):
+        return super().__getitem__(item.upper())
+
+    def get(self, item, **kwargs):
+        return super().get(item.upper(), **kwargs)
 
 
 class DoconfConfig(metaclass=MetaConfig):
@@ -312,19 +330,28 @@ class DoconfConfig(metaclass=MetaConfig):
 
     def __init__(self, config=None):
         self._config = config
-        self._default = self.__class__._ENVS['DEFAULT']
+        self._default = self.__class__._ENVS['default']
         self._values = {}
         self.parse()
 
     def parse(self):
+        self._parsed = {}
         for d_sect in self._default.sections:
-            sect_values = {}
+            sect_values = DoconfSection()
             self._values[d_sect.name] = sect_values
+            self._values[d_sect.name].update(d_sect.defaults)
             try:
                 sect = self._config[d_sect.name]
             except KeyError:
-                # Should check if any required variables are in this section.
-                continue
+                if d_sect.has_required:
+                    raise DoconfBadConfigError(
+                        'missing section {!r} and it has required variables'
+                        .format(d_sect.name)
+                    )
+                else:
+                    # Missing section, but it doesn't have any required
+                    # variables.
+                    continue
             for var in d_sect.variables:
                 try:
                     val = sect[var.name]
@@ -335,11 +362,18 @@ class DoconfConfig(metaclass=MetaConfig):
                             'cant find config variable {!r} in section {!r}'
                             .format(var.name, d_sect.name)
                         )
-                    else:
-                        sect_values[var.name] = var.default
                     continue
                 try:
                     val = parse_as(val, var.typ)
-                except DoconfTypeError:
-                    raise
+                except DoconfTypeError as e:
+                    raise DoconfBadConfigError(
+                        'variable {!r} cant be parsed as {!r} ({!r}): {}'
+                        .format(var.name, var.typ, val, str(e))
+                    )
                 sect_values[var.name] = val
+
+    def __getitem__(self, item):
+        return self._values[item.lower()]
+
+    def get(self, item, **kwargs):
+        return self._values.get(item.lower(), **kwargs)

@@ -18,7 +18,7 @@ class BasicConfig(DoconfConfig):
     AGE (int): person's age
     SUCCESS (float): how successful in parsing this config from 0 to 1
     NAME (str): the person's name
-    IDEA: some default string
+    IDEA (str:"fizz buzz bar"): some string with a default
 
     [second_section]
     DEBUG2 (bool:false): debug mode on or off
@@ -31,7 +31,7 @@ class BasicConfig(DoconfConfig):
 
 
 def test_load_basic_config():
-    BasicConfig.load(text='''
+    conf = BasicConfig.load(text='''
     [section1]
     DEBUG=true
     AGE=30
@@ -39,6 +39,16 @@ def test_load_basic_config():
     NAME=joey
     # Should raise issue with IDEA missing...
     # IDEA=test
-    [section2]
+    [second_section]
     DEBUG2=true
+    IDEA2=fazz bazz
     ''')
+    from pprint import pprint
+    pprint(conf._values)
+    assert conf['section1']['debug'] is True
+    assert conf['section1']['age'] == 30
+    assert conf['section1']['success'] == 1.0
+    assert isinstance(conf['section1']['success'], float)
+    assert conf['section1']['name'] == 'joey'
+    assert conf['section1']['idea'] == 'fizz buzz bar'
+    assert conf['second_section']['idea2'] == 'fazz bazz'
