@@ -40,6 +40,8 @@ a class in a similar format::
         LOG_FORMAT (str:null): None by default
 
         {production}
+
+        [server]
         HOST (str:"0.0.0.0"): serve to the world
         PORT (int:8081): serve on port 8081
         DEBUG (bool:false): default to false for production
@@ -54,6 +56,13 @@ a class in a similar format::
 
     config = Config.load()
 
+    # And now we can access values from it with dictionary access.
+    log_level = config['logger']['LOG_LEVEL']
+
+    # It's case insensitive on section and variable names.
+    if 'log_path' in config['logger']:
+        print('this is true, case insensitive')
+
 
 In the above example, we can see that we specified a subclass of DoconfConfig, and it's a config for
 an app named "echo_server".
@@ -64,7 +73,20 @@ Then we specify a {production} environment next and make a few changes to defaul
 Using that, we can now load our config wth ``Config.load()`` below the class definition. It'll automatically
 look for echo_server.{conf,cfg,config} in serveral locations depending on the environment, and validate the
 config it finds and load it and coerce the values into the types specified. It'll raise an error if a required
-value (missing default value) isn't defined, or if the type is wrong.
+value (missing default value) isn't defined, or if the type is wrong. To figure out which paths it'd look for
+a config file, check the ``find`` command under the CLI Usage section.
+
+We simply run ``config = Config.load()`` to discover and load our config, and it'll preload it with the default
+values based on the default environment. We can also specify the default environment like::
+
+    config = Config.load(env='production')
+    assert config['server']['HOST'] == '0.0.0.0'
+
+And we can pass in a custom path to a config like so::
+
+    config = Config.load(path='/my/custom/path.config')
+
+It provides simple dictionary access, and is case-insensitive when matching against section or variable names.
 
 
 CLI Usage
@@ -146,6 +168,8 @@ This will dump out an example documented config for the default environment and 
 Release Notes
 -------------
 
+:0.1.2:
+  - Better example in API usage.
 :0.1.1:
   - Extended README.rst with an example.
 :0.1.0:
