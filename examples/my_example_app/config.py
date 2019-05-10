@@ -13,6 +13,8 @@ class CustomConfig(DoconfConfig):
     DEBUG (bool:true): whether debug mode is on
     LOG_LEVEL (str:"debug"): the log level setting
     LOG_PATH (str:"./my_example_app.log"): the default log path
+    NULLINT (int:null): this int is by default None
+    NULLINT2 (int:none): this is by default None as well
 
     [required_stuff]
     MAKE (str): the make of the car
