@@ -270,6 +270,9 @@ class DoconfSection(dict):
     def get(self, item, **kwargs):
         return super().get(item.upper(), **kwargs)
 
+    def __contains__(self, item):
+        return super().__contains__(item.upper())
+
 
 class DoconfConfig(metaclass=MetaConfig):
 
@@ -379,3 +382,6 @@ class DoconfConfig(metaclass=MetaConfig):
 
     def get(self, item, **kwargs):
         return self._values.get(item.lower(), **kwargs)
+
+    def __contains__(self, item):
+        return item.lower() in self._values
