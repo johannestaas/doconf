@@ -11,6 +11,7 @@ from configparser import ConfigParser
 
 from .exceptions import (
     DoconfClassError, DoconfFileError, DoconfTypeError, DoconfBadConfigError,
+    DoconfUndefinedEnvironmentError,
 )
 
 
@@ -277,9 +278,9 @@ class DoconfSection(dict):
 class DoconfConfig(metaclass=MetaConfig):
 
     @classmethod
-    def load(cls, path=None, text=None):
+    def load(cls, path=None, text=None, env='DEFAULT'):
         config = ConfigParser()
-        if text:
+        if text is not None:
             config.read_string(text)
         else:
             if path and not os.path.isfile(path):
@@ -295,7 +296,7 @@ class DoconfConfig(metaclass=MetaConfig):
                         .format(cls._NAME, '\n - '.join(discoverable))
                     )
             config.read(path)
-        return cls(config=config)
+        return cls(config=config, env=env)
 
     @classmethod
     def possible_paths(cls):
@@ -333,9 +334,13 @@ class DoconfConfig(metaclass=MetaConfig):
                 discoverable.append(path)
         return discoverable
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, env='DEFAULT'):
         self._config = config
-        self._default = self.__class__._ENVS['default']
+        if env.lower() not in self.__class__._ENVS:
+            raise DoconfUndefinedEnvironmentError(
+                'missing environment {!r}'.format(env)
+            )
+        self._default = self.__class__._ENVS[env.lower()]
         self._values = {}
         self.parse()
 

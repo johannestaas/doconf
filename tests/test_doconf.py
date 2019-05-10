@@ -10,6 +10,7 @@ from doconf import (
     DoconfBadConfigError,
     DoconfClassError,
     DoconfTypeError,
+    DoconfUndefinedEnvironmentError,
 )
 
 
@@ -209,3 +210,23 @@ def test_multiple_envs():
     assert prod_conf['server']['port'] == 8082
     assert prod_conf['server']['hostname'] == 'production.example.org'
     assert prod_conf['server']['debug'] is False
+
+
+def test_load_bad_env():
+    class GoodConfig(DoconfConfig):
+        '''
+        name: myserver
+
+        {default}
+        [server]
+        PORT (int:8080): whatever
+
+        {staging}
+        [server]
+        PORT (int:8080): whatever
+
+        # No production defined yet.
+        '''
+        pass
+    with pytest.raises(DoconfUndefinedEnvironmentError):
+        GoodConfig.load(text='', env='production')

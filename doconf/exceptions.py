@@ -40,3 +40,10 @@ class DoconfBadConfigError(DoconfError):
     in the wrong format.
     '''
     pass
+
+
+class DoconfUndefinedEnvironmentError(DoconfError):
+    '''
+    Raised when you try to load a config with an environment that wasnt defined.
+    '''
+    pass
