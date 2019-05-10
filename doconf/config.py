@@ -11,7 +11,7 @@ from .exceptions import (
     DoconfClassError, DoconfFileError, DoconfTypeError, DoconfBadConfigError,
     DoconfUndefinedEnvironmentError,
 )
-from .parse import parse_docs, parse_as
+from .parser import parse_docs, parse_as
 
 
 class MetaConfig(type):
