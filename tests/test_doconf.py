@@ -1,10 +1,11 @@
 import os
 import sys
+import pytest
 
 rootdir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path = [rootdir] + sys.path
 
-from doconf import DoconfConfig # , DoconfBadConfigError
+from doconf import DoconfConfig, DoconfBadConfigError
 
 
 class BasicConfig(DoconfConfig):
@@ -94,3 +95,8 @@ def test_all_defaults():
     assert sect['SUCCESS2'] == 1.0
     assert sect['NAME2'] == 'guydude'
     assert sect['IDEA2'] == 'asdf'
+
+
+def test_missing_required():
+    with pytest.raises(DoconfBadConfigError):
+        BasicConfig.load(text='''[second_section]''')
