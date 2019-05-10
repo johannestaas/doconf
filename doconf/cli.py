@@ -14,7 +14,9 @@ def main():
     parser = argparse.ArgumentParser()
     subs = parser.add_subparsers(dest='cmd')
 
-    s = subs.add_parser('find')
+    s = subs.add_parser(
+        'find', help='find where the config file would be loaded from',
+    )
     s.add_argument(
         'class_path',
         help=(
@@ -23,7 +25,9 @@ def main():
         ),
     )
 
-    s = subs.add_parser('validate')
+    s = subs.add_parser(
+        'validate', help='validate your config files match the format',
+    )
     s.add_argument(
         'class_path',
         help=(
@@ -36,13 +40,19 @@ def main():
         '--env', '-e', default='default', help='the environment to use',
     )
 
-    s = subs.add_parser('generate')
+    s = subs.add_parser(
+        'generate', help='generate example config files',
+    )
     s.add_argument(
         'class_path',
         help=(
             'path to the module and class, '
             'eg: custom_example.config:CustomConfig'
         ),
+    )
+    s.add_argument(
+        '--out', '-o', default='.',
+        help='output directory, default to current directory',
     )
 
     args = parser.parse_args()
@@ -83,6 +93,25 @@ def main():
                     key, val.__class__.__name__, val,
                 ))
             print()
+    elif args.cmd == 'generate':
+        for env_name, env in cls._ENVS.items():
+            filename = '{}.{}.config'.format(
+                env_name.lower(), cls._NAME.lower(),
+            )
+            path = os.path.join(args.out, filename)
+            text = ''
+            for sect in env.sections:
+                text += '[{}]\n'.format(sect.name)
+                for var in sect.variables:
+                    text += '# ({}) {}\n'.format(var.typ.__name__, var.desc)
+                    if var.has_default:
+                        text += '{}={}\n'.format(var.name, var.default)
+                    else:
+                        text += '{}=<required>\n'.format(var.name)
+                text += '\n'
+            with open(path, 'w') as f:
+                f.write(text)
+            print('Dumped example to {}'.format(path))
     else:
         parser.print_usage()
 
