@@ -11,7 +11,7 @@ def read(fname):
 
 setup(
     name="doconf",
-    version="0.1.0",
+    version="0.1.1",
     description=(
         "Configuration specified through documentation, supporting multiple "
         "formats."

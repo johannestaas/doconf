@@ -146,6 +146,8 @@ This will dump out an example documented config for the default environment and 
 Release Notes
 -------------
 
+:0.1.1:
+  - Extended README.rst with an example.
 :0.1.0:
   - Implemented main logic, including parser and DoconfConfig class.
   - Implemented CLI tools: find, validate, generate.
