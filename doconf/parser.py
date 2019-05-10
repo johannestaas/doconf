@@ -234,3 +234,4 @@ def parse_docs(lines, dct):
         raise DoconfClassError('No DEFAULT configurations documented in class')
 
     dct['_ENVS'] = state.envs
+    dct['_NAME'] = state.dct['_NAME']
