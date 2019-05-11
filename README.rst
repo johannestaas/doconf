@@ -171,6 +171,7 @@ Release Notes
 :0.2.0:
   - Handle multiline descriptions.
   - Add simple example in ./examples
+  - Fix issue with sys.path when running doconf on local python modules.
 :0.1.2:
   - Better example in API usage.
 :0.1.1:
