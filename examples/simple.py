@@ -19,8 +19,8 @@ class SimpleConfig(DoconfConfig):
     [other_section]
     NAME: this variable has no type defined so it is a "str" and required
     AGE (int): this is an integer that is required. Due to this being required,
-        it will fail if this section doesn't exist. This is also a long
-        multiline description.
+        > it will fail if this section doesn't exist. This is also a long
+        > multiline description with continued lines specified with ">" prefix.
 
     [third_section]
     THIRD_SECT_VALUE (str:null): not required, default None

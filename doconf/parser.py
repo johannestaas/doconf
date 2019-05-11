@@ -180,6 +180,13 @@ class _State:
             return True
         return False
 
+    def handle_multiline(self):
+        line = self.line.strip()
+        if line.startswith('>') and self.sect.variables:
+            self.sect.variables[-1].desc += ' ' + self.line.lstrip('>').strip()
+            return True
+        return False
+
 
 def parse_as(val, typ):
     val = val.strip()
@@ -228,6 +235,8 @@ def parse_docs(lines, dct):
         if state.handle_sect():
             continue
         if state.handle_var():
+            continue
+        if state.handle_multiline():
             continue
 
     if not state.envs.get('default'):

@@ -104,7 +104,17 @@ def main():
             for sect in env.sections:
                 text += '[{}]\n'.format(sect.name)
                 for var in sect.variables:
-                    text += '# ({}) {}\n'.format(var.typ.__name__, var.desc)
+                    extra = '# ({}) '.format(var.typ.__name__)
+                    desc = var.desc.split()
+                    while desc:
+                        x = len(extra) // 80
+                        y = len('{} {}'.format(extra, desc[0])) // 80
+                        if y > x:
+                            extra += '\n# {}'.format(desc[0])
+                        else:
+                            extra += ' {}'.format(desc[0])
+                        desc = desc[1:]
+                    text += extra + '\n'
                     if var.has_default:
                         text += '{}={}\n'.format(var.name, var.default)
                     else:
