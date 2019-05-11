@@ -3,6 +3,7 @@ import sys
 
 
 def load_class(module, class_name):
+    sys.path = ['.'] + sys.path
     submod = __import__(module)
     for next_mod in module.split('.')[1:]:
         submod = getattr(submod, next_mod)
