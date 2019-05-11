@@ -168,6 +168,9 @@ This will dump out an example documented config for the default environment and 
 Release Notes
 -------------
 
+:0.2.0:
+  - Handle multiline descriptions.
+  - Add simple example in ./examples
 :0.1.2:
   - Better example in API usage.
 :0.1.1:
